@@ -1,5 +1,5 @@
 import * as web3 from '@solana/web3.js'
-import * as borsh from '@project-serum/borsh'
+import * as borsh from '@coral-xyz/borsh'
 import * as fs from 'fs'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -47,9 +47,9 @@ async function sendTestMovieReview(signer: web3.Keypair, programId: web3.PublicK
         buffer
     )
 
-    buffer = buffer.slice(0, movieInstructionLayout.getSpan(buffer))
+    buffer = buffer.subarray(0, movieInstructionLayout.getSpan(buffer))
 
-    const [pda] = await web3.PublicKey.findProgramAddress(
+    const [pda] = await web3.PublicKey.findProgramAddressSync(
         [signer.publicKey.toBuffer(), Buffer.from(movieTitle)],
         programId
     )
