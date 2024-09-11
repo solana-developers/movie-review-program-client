@@ -99,24 +99,21 @@ async function sendTestMovieReview(
   console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
 }
 
-async function main() {
-  const signer = initializeSignerKeypair();
+(async () => {
+  try {
+    const signer = initializeSignerKeypair();
 
-  const connection = new Connection(clusterApiUrl("devnet"));
-  await airdropSolIfNeeded(signer, connection);
+    const connection = new Connection(clusterApiUrl("devnet"));
+    await airdropSolIfNeeded(signer, connection);
 
-  const movieProgramId = new PublicKey(
-    "FnHUUiX2jLSaGdt6GpgoJYKnUxzbPG5VmRPEDr1NEekm"
-  );
-  await sendTestMovieReview(signer, movieProgramId, connection);
-}
+    const movieProgramId = new PublicKey(
+      "FnHUUiX2jLSaGdt6GpgoJYKnUxzbPG5VmRPEDr1NEekm"
+    );
+    await sendTestMovieReview(signer, movieProgramId, connection);
 
-main()
-  .then(() => {
     console.log("Finished successfully");
-    process.exit(0);
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error(error);
     process.exit(1);
-  });
+  }
+})();
