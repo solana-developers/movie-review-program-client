@@ -12,30 +12,34 @@ import {
 import { struct, u8, str } from "@coral-xyz/borsh";
 import { writeFileSync } from "fs";
 import dotenv from "dotenv";
+import {
+  initializeKeypair,
+  addKeypairToEnvFile,
+} from "@solana-developers/helpers";
 
 dotenv.config();
 
-function initializeSignerKeypair(): Keypair {
-  if (!process.env.PRIVATE_KEY) {
-    console.log("Creating .env file");
-    const signer = Keypair.generate();
-    writeFileSync(".env", `PRIVATE_KEY=[${signer.secretKey.toString()}]`);
-    return signer;
-  }
+// function initializeSignerKeypair(): Keypair {
+//   if (!process.env.PRIVATE_KEY) {
+//     console.log("Creating .env file");
+//     const signer = Keypair.generate();
+//     writeFileSync(".env", `PRIVATE_KEY=[${signer.secretKey.toString()}]`);
+//     return signer;
+//   }
 
-  const secret = JSON.parse(process.env.PRIVATE_KEY ?? "") as number[];
-  const secretKey = Uint8Array.from(secret);
-  return Keypair.fromSecretKey(secretKey);
-}
+//   const secret = JSON.parse(process.env.PRIVATE_KEY ?? "") as number[];
+//   const secretKey = Uint8Array.from(secret);
+//   return Keypair.fromSecretKey(secretKey);
+// }
 
-async function airdropSolIfNeeded(signer: Keypair, connection: Connection) {
-  const balance = await connection.getBalance(signer.publicKey);
-  console.log("Current balance is", balance);
-  if (balance < LAMPORTS_PER_SOL) {
-    console.log("Airdropping 1 SOL...");
-    await connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);
-  }
-}
+// async function airdropSolIfNeeded(signer: Keypair, connection: Connection) {
+//   const balance = await connection.getBalance(signer.publicKey);
+//   console.log("Current balance is", balance);
+//   if (balance < LAMPORTS_PER_SOL) {
+//     console.log("Airdropping 1 SOL...");
+//     await connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);
+//   }
+// }
 
 const movieInstructionLayout = struct([
   u8("variant"),
@@ -101,10 +105,12 @@ async function sendTestMovieReview(
 
 (async () => {
   try {
-    const signer = initializeSignerKeypair();
-
     const connection = new Connection(clusterApiUrl("devnet"));
-    await airdropSolIfNeeded(signer, connection);
+
+    const signer = await initializeKeypair(connection, {
+      airdropAmount: LAMPORTS_PER_SOL,
+      envVariableName: "PRIVATE_KEY",
+    });
 
     const movieProgramId = new PublicKey(
       "FnHUUiX2jLSaGdt6GpgoJYKnUxzbPG5VmRPEDr1NEekm"
