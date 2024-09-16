@@ -1,104 +1,104 @@
-import * as web3 from '@solana/web3.js'
-import * as borsh from '@coral-xyz/borsh'
-import * as fs from 'fs'
-import dotenv from 'dotenv'
-dotenv.config()
+import {
+  Keypair,
+  Connection,
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  clusterApiUrl,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import { struct, u8, str } from "@coral-xyz/borsh";
+import { writeFileSync } from "fs";
+import dotenv from "dotenv";
+import {
+  initializeKeypair,
+  addKeypairToEnvFile,
+} from "@solana-developers/helpers";
 
-function initializeSignerKeypair(): web3.Keypair {
-    if (!process.env.PRIVATE_KEY) {
-        console.log('Creating .env file')
-        const signer = web3.Keypair.generate()
-        fs.writeFileSync('.env',`PRIVATE_KEY=[${signer.secretKey.toString()}]`)
-        return signer
-    }
-    
-    const secret = JSON.parse(process.env.PRIVATE_KEY ?? "") as number[]
-    const secretKey = Uint8Array.from(secret)
-    const keypairFromSecretKey = web3.Keypair.fromSecretKey(secretKey)
-    return keypairFromSecretKey
+dotenv.config();
+
+
+const movieInstructionLayout = struct([
+  u8("variant"),
+  str("title"),
+  u8("rating"),
+  str("description"),
+]);
+
+async function sendTestMovieReview(
+  signer: Keypair,
+  programId: PublicKey,
+  connection: Connection
+) {
+  let buffer = Buffer.alloc(1000);
+  const movieTitle = `Braveheart${Math.random() * 1000000}`;
+  movieInstructionLayout.encode(
+    {
+      variant: 0,
+      title: movieTitle,
+      rating: 5,
+      description: "A great movie",
+    },
+    buffer
+  );
+
+  buffer = buffer.subarray(0, movieInstructionLayout.getSpan(buffer));
+
+  const [pda] = await PublicKey.findProgramAddressSync(
+    [signer.publicKey.toBuffer(), Buffer.from(movieTitle)],
+    programId
+  );
+
+  console.log("PDA is:", pda.toBase58());
+
+  const transaction = new Transaction();
+
+  const instruction = new TransactionInstruction({
+    programId: programId,
+    data: buffer,
+    keys: [
+      {
+        pubkey: signer.publicKey,
+        isSigner: true,
+        isWritable: false,
+      },
+      {
+        pubkey: pda,
+        isSigner: false,
+        isWritable: true,
+      },
+      {
+        pubkey: SystemProgram.programId,
+        isSigner: false,
+        isWritable: false,
+      },
+    ],
+  });
+
+  transaction.add(instruction);
+  const tx = await sendAndConfirmTransaction(connection, transaction, [signer]);
+  console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
 }
 
-async function airdropSolIfNeeded(signer: web3.Keypair, connection: web3.Connection) {
-    const balance = await connection.getBalance(signer.publicKey)
-    console.log('Current balance is', balance)
-    if (balance < web3.LAMPORTS_PER_SOL) {
-        console.log('Airdropping 1 SOL...')
-        await connection.requestAirdrop(signer.publicKey, web3.LAMPORTS_PER_SOL)
-    }
-}
+(async () => {
+  try {
+    const connection = new Connection(clusterApiUrl("devnet"));
 
-const movieInstructionLayout = borsh.struct([
-    borsh.u8('variant'),
-    borsh.str('title'),
-    borsh.u8('rating'),
-    borsh.str('description')
-])
+    const signer = await initializeKeypair(connection, {
+      airdropAmount: LAMPORTS_PER_SOL,
+      envVariableName: "PRIVATE_KEY",
+    });
 
-async function sendTestMovieReview(signer: web3.Keypair, programId: web3.PublicKey, connection: web3.Connection) {
-    let buffer = Buffer.alloc(1000)
-    const movieTitle = `Braveheart${Math.random()*1000000}`
-    movieInstructionLayout.encode(
-        {
-            variant: 0,
-            title: movieTitle,
-            rating: 5,
-            description: 'A great movie'
-        },
-        buffer
-    )
+    const movieProgramId = new PublicKey(
+      "FnHUUiX2jLSaGdt6GpgoJYKnUxzbPG5VmRPEDr1NEekm"
+    );
+    await sendTestMovieReview(signer, movieProgramId, connection);
 
-    buffer = buffer.subarray(0, movieInstructionLayout.getSpan(buffer))
-
-    const [pda] = await web3.PublicKey.findProgramAddressSync(
-        [signer.publicKey.toBuffer(), Buffer.from(movieTitle)],
-        programId
-    )
-
-    console.log("PDA is:", pda.toBase58())
-
-    const transaction = new web3.Transaction()
-    
-    const instruction = new web3.TransactionInstruction({
-        programId: programId,
-        data: buffer,
-        keys: [
-            {
-                pubkey: signer.publicKey,
-                isSigner: true,
-                isWritable: false
-            },
-            {
-                pubkey: pda,
-                isSigner: false,
-                isWritable: true
-            },
-            {
-                pubkey: web3.SystemProgram.programId,
-                isSigner: false,
-                isWritable: false
-            }
-        ]
-    })
-
-    transaction.add(instruction)
-    const tx = await web3.sendAndConfirmTransaction(connection, transaction, [signer])
-    console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`)
-}
-
-async function main() {
-    const signer = initializeSignerKeypair()
-    
-    const connection = new web3.Connection(web3.clusterApiUrl('devnet'))
-    await airdropSolIfNeeded(signer, connection)
-    
-    const movieProgramId = new web3.PublicKey('FnHUUiX2jLSaGdt6GpgoJYKnUxzbPG5VmRPEDr1NEekm')
-    await sendTestMovieReview(signer, movieProgramId, connection)
-}
-
-main().then(() => {
-    console.log('Finished successfully')
-    process.exit(0)
-}).catch(error => {
-    console.log(error)
-    process.exit(1)
-})
+    console.log("Finished successfully");
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+})();
