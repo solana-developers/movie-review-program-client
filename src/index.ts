@@ -19,27 +19,6 @@ import {
 
 dotenv.config();
 
-// function initializeSignerKeypair(): Keypair {
-//   if (!process.env.PRIVATE_KEY) {
-//     console.log("Creating .env file");
-//     const signer = Keypair.generate();
-//     writeFileSync(".env", `PRIVATE_KEY=[${signer.secretKey.toString()}]`);
-//     return signer;
-//   }
-
-//   const secret = JSON.parse(process.env.PRIVATE_KEY ?? "") as number[];
-//   const secretKey = Uint8Array.from(secret);
-//   return Keypair.fromSecretKey(secretKey);
-// }
-
-// async function airdropSolIfNeeded(signer: Keypair, connection: Connection) {
-//   const balance = await connection.getBalance(signer.publicKey);
-//   console.log("Current balance is", balance);
-//   if (balance < LAMPORTS_PER_SOL) {
-//     console.log("Airdropping 1 SOL...");
-//     await connection.requestAirdrop(signer.publicKey, LAMPORTS_PER_SOL);
-//   }
-// }
 
 const movieInstructionLayout = struct([
   u8("variant"),
